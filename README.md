@@ -132,5 +132,5 @@ This project is open source and available for educational use.
 ## 👤 Author
 
 **Fred Kwizera**
-University of Lay Adventists of Kigali (ULAK)
+University of Lay Adventists of Kigali (UNILAK)
 [GitHub](https://github.com/KWIZERA-FRED)
