@@ -27,16 +27,21 @@ Built as part of a Mobile Development course assignment at the **University of L
 ---
 
 ## 📱 Screenshots
+<p align="center">
+  <em>Home Screen </em>
+
+</p>
 
 <p align="center">
   <img src="assets/screenshots/HomeScreen.jpeg" alt="Home Screen" width="260" />
   &nbsp;&nbsp;
+  <p align="center">
+  <em>Home Screen </em> 
+</p>
+&nbsp;&nbsp;
   <img src="assets/screenshots/AddGoalScreen.jpeg" alt="Add Goal Screen" width="260" />
 </p>
 
-<p align="center">
-  <em>Home Screen &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Add Goal Screen</em>
-</p>
 
 ---
 
