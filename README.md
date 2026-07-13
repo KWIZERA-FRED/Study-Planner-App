@@ -1,6 +1,6 @@
 # 📚 My Study Planner
 
-A Flutter mobile application that helps students organize their study schedule, track tasks, and manage their academic workload — all backed by local persistent storage.
+A Flutter mobile application that helps students organize their study goals, track tasks, and manage their academic workload — all backed by local persistent storage.
 
 Built as part of a Mobile Development course assignment at the **University of Lay Adventists of Kigali (ULAK)**.
 
@@ -8,11 +8,11 @@ Built as part of a Mobile Development course assignment at the **University of L
 
 ## ✨ Features
 
-- **Task Management** — Create, edit, and delete study tasks with ease
+- **Goal & Task Management** — Create, edit, and delete study goals and tasks with ease
 - **State Management** — Reactive UI updates powered by Flutter's state management
 - **Navigation** — Smooth multi-screen navigation flow
 - **Reusable Widgets** — Modular, component-based UI architecture
-- **Local Persistence** — Tasks are saved locally using **SQLite** (via the `sqflite` package), so your data stays available even after closing the app
+- **Local Persistence** — Data is saved locally using **SQLite** (via the `sqflite` package), so your progress stays available even after closing the app
 
 ---
 
@@ -28,13 +28,15 @@ Built as part of a Mobile Development course assignment at the **University of L
 
 ## 📱 Screenshots
 
-> _Add screenshots of your app here to give users a quick visual preview._
+<p align="center">
+  <img src="assets/screenshots/HomeScreen.jpeg" alt="Home Screen" width="260" />
+  &nbsp;&nbsp;
+  <img src="assets/screenshots/AddGoalScreen.jpeg" alt="Add Goal Screen" width="260" />
+</p>
 
-```
-assets/screenshots/home.png
-assets/screenshots/add_task.png
-assets/screenshots/task_list.png
-```
+<p align="center">
+  <em>Home Screen &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Add Goal Screen</em>
+</p>
 
 ---
 
@@ -52,17 +54,20 @@ Make sure you have the following installed:
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/KWIZERA-FRED/Study-Planner-App.git
    cd Study-Planner-App/my_study_planner
    ```
 
 2. **Install dependencies**
+
    ```bash
    flutter pub get
    ```
 
 3. **Run the app**
+
    ```bash
    flutter run
    ```
@@ -74,10 +79,12 @@ Make sure you have the following installed:
 ```
 my_study_planner/
 ├── lib/
-│   └── main.dart        # Core application logic: UI, state, navigation, and SQLite integration
-├── android/              # Android platform files
-├── ios/                  # iOS platform files
-├── pubspec.yaml           # Project dependencies and metadata
+│   └── main.dart          # Core application logic: UI, state, navigation, and SQLite integration
+├── assets/
+│   └── screenshots/       # App screenshots used in this README
+├── android/                # Android platform files
+├── ios/                     # iOS platform files
+├── pubspec.yaml              # Project dependencies and metadata
 └── README.md
 ```
 
@@ -85,17 +92,17 @@ my_study_planner/
 
 ## 🧠 How It Works
 
-- The app maintains task state in memory using Flutter's built-in state management (`setState`/`StatefulWidget`).
-- Each task is persisted to a local **SQLite database** through the `sqflite` package, ensuring data survives app restarts.
-- Navigation between screens (e.g., task list ↔ add/edit task) is handled using Flutter's `Navigator`.
-- UI is composed of reusable custom widgets to keep the codebase clean and maintainable.
+- The app maintains goal/task state in memory using Flutter's built-in state management (`setState`/`StatefulWidget`).
+- Each entry is persisted to a local **SQLite database** through the `sqflite` package, ensuring data survives app restarts.
+- Navigation between screens (e.g., home ↔ add goal) is handled using Flutter's `Navigator`.
+- The UI is composed of reusable custom widgets to keep the codebase clean and maintainable.
 
 ---
 
 ## 🗺️ Roadmap
 
 - [ ] Add due-date reminders and notifications
-- [ ] Add categories/tags for tasks (e.g., by course)
+- [ ] Add categories/tags for goals (e.g., by course)
 - [ ] Add a calendar view
 - [ ] Add cloud sync/backup
 
