@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # my_study_planner
 
 A new Flutter project.
@@ -15,3 +16,6 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+=======
+# Study-Planner-App
+>>>>>>> 45518882f7b6ef4dd62cc5270025eead3ca7b8d4
