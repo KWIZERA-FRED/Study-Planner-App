@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart' as p;
+import 'api_service.dart';
 
 void main() {
   runApp(const MyApp());
@@ -14,7 +13,6 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      // STATIC: app-wide theme — colors, fonts, and card styling applied everywhere
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF3F51B5)),
@@ -36,7 +34,6 @@ class MyApp extends StatelessWidget {
 }
 
 // STATIC — the screen shell, not the brain
-// Its ONLY job is to point to _HomeScreenState
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -44,7 +41,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-// STATIC — a small reusable widget, used 3 times in the stats card
+// STATIC — small reusable widget, used 3 times in the stats card
 class StatCard extends StatelessWidget {
   final String label;
   final String value;
@@ -81,13 +78,10 @@ class StatCard extends StatelessWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // LOGIC: the in-memory list — always kept in sync with the database
   List<Map<String, dynamic>> _goals = [];
+  bool _isLoading = true;
+  String? _loadError;
 
-  // LOGIC: holds the open database connection once it's ready
-  Database? _db;
-
-  // LOGIC: getters — recalculated fresh every single time they're read
   int get _totalGoals => _goals.length;
   int get _totalHours =>
       _goals.fold<int>(0, (sum, goal) => sum + (goal['hours'] as int));
@@ -95,96 +89,81 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void initState() {
-    // Run Flutter's default setup first, then start loading our own data
     super.initState();
-    // LOGIC: as soon as this screen is created, open the DB and load goals
-    _initDatabase();
+    _loadGoals();
   }
 
-  // LOGIC: opens (or creates) the database file and the goals table
-  Future<void> _initDatabase() async {
-    final dbPath = await getDatabasesPath();
-    final path = p.join(dbPath, 'study_planner.db');
-
-    _db = await openDatabase(
-      path,
-      version: 1,
-      onCreate: (db, version) {
-        return db.execute('''
-          CREATE TABLE goals(
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            subject TEXT NOT NULL,
-            hours INTEGER NOT NULL,
-            done INTEGER NOT NULL DEFAULT 0
-          )
-        ''');
-      },
-    );
-    await _loadGoals();
-  }
-
-  // LOGIC: reads every row from the goals table into _goals
   Future<void> _loadGoals() async {
-    final rows = await _db!.query('goals');
     setState(() {
-      _goals = rows.map((row) {
-        return {
-          'id': row['id'],
-          'subject': row['subject'],
-          'hours': row['hours'],
-          'done': row['done'] == 1, // SQLite stores bool as 0/1
-        };
-      }).toList();
+      _isLoading = true;
+      _loadError = null;
     });
+    try {
+      final goals = await ApiService.fetchGoals();
+      setState(() {
+        _goals = goals;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _loadError = 'Could not reach the server. Is the backend running?';
+        _isLoading = false;
+      });
+    }
   }
 
-  // LOGIC: flips one goal's done status in the DB, then in _goals, then redraws
   Future<void> _toggleDone(int index) async {
     final goal = _goals[index];
     final newDone = !(goal['done'] as bool);
 
-    await _db!.update(
-      'goals',
-      {'done': newDone ? 1 : 0},
-      where: 'id = ?',
-      whereArgs: [goal['id']],
-    );
-    setState(() {
-      _goals[index]['done'] = newDone;
-    });
+    try {
+      await ApiService.updateGoal(goal['id'] as int, done: newDone);
+      setState(() {
+        _goals[index]['done'] = newDone;
+      });
+    } catch (e) {
+      _showError('Could not update the goal. Check your connection.');
+    }
   }
 
-  // LOGIC: removes one goal, then triggers a redraw
   Future<void> _deleteGoal(int index) async {
     final goal = _goals[index];
 
-    await _db!.delete('goals', where: 'id = ?', whereArgs: [goal['id']]);
-    setState(() {
-      _goals.removeAt(index);
-    });
+    try {
+      await ApiService.deleteGoal(goal['id'] as int);
+      setState(() {
+        _goals.removeAt(index);
+      });
+    } catch (e) {
+      _showError('Could not delete the goal. Check your connection.');
+    }
   }
 
-  // LOGIC: opens the Add Goal screen and waits for it to send data back
   Future<void> _openAddGoalScreen() async {
     final newGoal = await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const AddGoalScreen()),
     );
     if (newGoal != null) {
-      final id = await _db!.insert('goals', {
-        'subject': newGoal['subject'],
-        'hours': newGoal['hours'],
-        'done': 0,
-      });
-      setState(() {
-        _goals.add({
-          'id': id,
-          'subject': newGoal['subject'],
-          'hours': newGoal['hours'],
-          'done': false,
+      try {
+        final created = await ApiService.createGoal(
+          newGoal['subject'] as String,
+          newGoal['hours'] as int,
+        );
+        setState(() {
+          _goals.add(created);
         });
-      });
+      } catch (e) {
+        _showError('Could not save the goal. Check your connection.');
+      }
     }
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -197,7 +176,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
-        // LOGIC: live progress summary, reads the getters directly
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
@@ -226,7 +204,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: Column(
         children: [
-          // STATIC layout, LOGIC values — reused widget x3, reads getters
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 16, 12, 8),
             child: Card(
@@ -258,10 +235,37 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-
-          // CONNECTION POINT 1: reading _goals to decide what to show
           Expanded(
-            child: _goals.isEmpty
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _loadError != null
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.cloud_off,
+                          size: 56,
+                          color: Colors.grey.shade300,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          _loadError!,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        ElevatedButton(
+                          onPressed: _loadGoals,
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  )
+                : _goals.isEmpty
                 ? Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -282,69 +286,69 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                   )
-                : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(12, 4, 12, 80),
-                    itemCount: _goals.length,
-                    itemBuilder: (context, index) {
-                      final goal = _goals[index];
-                      final bool done = goal['done'];
+                : RefreshIndicator(
+                    onRefresh: _loadGoals,
+                    child: ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(12, 4, 12, 80),
+                      itemCount: _goals.length,
+                      itemBuilder: (context, index) {
+                        final goal = _goals[index];
+                        final bool done = goal['done'];
 
-                      return Card(
-                        margin: const EdgeInsets.symmetric(vertical: 6),
-                        color: done ? Colors.grey.shade100 : Colors.white,
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 4,
-                          ),
-                          leading: Icon(
-                            done
-                                ? Icons.check_circle
-                                : Icons.radio_button_unchecked,
-                            color: done ? Colors.green : Colors.grey.shade400,
-                          ),
-                          title: Text(
-                            goal['subject'],
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              decoration: done
-                                  ? TextDecoration.lineThrough
-                                  : TextDecoration.none,
-                              color: done ? Colors.grey : Colors.black87,
+                        return Card(
+                          margin: const EdgeInsets.symmetric(vertical: 6),
+                          color: done ? Colors.grey.shade100 : Colors.white,
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 4,
+                            ),
+                            leading: Icon(
+                              done
+                                  ? Icons.check_circle
+                                  : Icons.radio_button_unchecked,
+                              color: done ? Colors.green : Colors.grey.shade400,
+                            ),
+                            title: Text(
+                              goal['subject'],
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                decoration: done
+                                    ? TextDecoration.lineThrough
+                                    : TextDecoration.none,
+                                color: done ? Colors.grey : Colors.black87,
+                              ),
+                            ),
+                            subtitle: Text(
+                              '${goal['hours']} hours',
+                              style: TextStyle(color: Colors.grey.shade600),
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  onPressed: () => _toggleDone(index),
+                                  icon: const Icon(Icons.check),
+                                  color: Colors.green,
+                                  tooltip: 'Mark done',
+                                ),
+                                IconButton(
+                                  onPressed: () => _deleteGoal(index),
+                                  icon: const Icon(Icons.delete_outline),
+                                  color: Colors.redAccent,
+                                  tooltip: 'Delete',
+                                ),
+                              ],
                             ),
                           ),
-                          subtitle: Text(
-                            '${goal['hours']} hours',
-                            style: TextStyle(color: Colors.grey.shade600),
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              // CONNECTION POINT 2: button press calls logic function
-                              IconButton(
-                                onPressed: () => _toggleDone(index),
-                                icon: const Icon(Icons.check),
-                                color: Colors.green,
-                                tooltip: 'Mark done',
-                              ),
-                              IconButton(
-                                onPressed: () => _deleteGoal(index),
-                                icon: const Icon(Icons.delete_outline),
-                                color: Colors.redAccent,
-                                tooltip: 'Delete',
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
+                        );
+                      },
+                    ),
                   ),
           ),
         ],
       ),
-
       floatingActionButton: FloatingActionButton.extended(
-        // CONNECTION POINT 2: button press calls logic function
         onPressed: _openAddGoalScreen,
         icon: const Icon(Icons.add),
         label: const Text('Add Goal'),
@@ -362,14 +366,10 @@ class AddGoalScreen extends StatefulWidget {
 }
 
 class _AddGoalScreenState extends State<AddGoalScreen> {
-  // LOGIC: controllers read whatever the user types into each field
   final _subjectController = TextEditingController();
   final _hoursController = TextEditingController();
-
-  // LOGIC: holds an error message to show, or null if there's no error
   String? _errorMessage;
 
-  // LOGIC: validates input, and if valid, closes the screen with the new goal
   void _saveGoal() {
     final subject = _subjectController.text.trim();
     final hoursText = _hoursController.text.trim();
@@ -416,7 +416,6 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
               ),
             ),
             const SizedBox(height: 16),
-
             TextField(
               controller: _hoursController,
               keyboardType: TextInputType.number,
@@ -428,8 +427,6 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
               ),
             ),
             const SizedBox(height: 12),
-
-            // LOGIC: only shows if there's an error to display
             if (_errorMessage != null)
               Container(
                 padding: const EdgeInsets.all(10),
@@ -455,7 +452,6 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
                 ),
               ),
             const SizedBox(height: 24),
-
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),

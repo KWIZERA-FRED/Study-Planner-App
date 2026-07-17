@@ -1,3 +1,10 @@
+# Python backend
+backend/venv/
+backend/__pycache__/
+backend/*.pyc
+backend/set_env.ps1
+backend/.env
+
 # Miscellaneous
 *.class
 *.log

@@ -1,0 +1,9 @@
+CREATE DATABASE IF NOT EXISTS study_planner;
+USE study_planner;
+
+CREATE TABLE IF NOT EXISTS goals (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    subject VARCHAR(255) NOT NULL,
+    hours INT NOT NULL,
+    done BOOLEAN NOT NULL DEFAULT FALSE
+);
