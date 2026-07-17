@@ -6,7 +6,8 @@ class ApiService {
   // Android emulator (AVD) talking to Flask running on your own machine.
   // Use http://localhost:5000 for iOS simulator/desktop/web,
   // or your computer's LAN IP for a physical phone.
-  static const String baseUrl = 'http://10.0.2.2:5000';
+  static const String baseUrl =
+      'https://study-planner-backend-xpfa.onrender.com';
 
   static Future<List<Map<String, dynamic>>> fetchGoals() async {
     final response = await http.get(Uri.parse('$baseUrl/goals'));
