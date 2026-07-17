@@ -16,27 +16,49 @@ DB_CONFIG = {
     "ssl_disabled": False,
 }
 
+# Aiven requires SSL. If you've downloaded the CA cert (ca.pem) from the
+# Aiven console, set DB_SSL_CA to its path (or upload it as a Render secret
+# file and point to that path) for full certificate verification.
+DB_SSL_CA = os.getenv("DB_SSL_CA")
+if DB_SSL_CA:
+    DB_CONFIG["ssl_ca"] = DB_SSL_CA
+    DB_CONFIG["ssl_verify_cert"] = True
+else:
+    # Works without the CA file, but doesn't verify the server certificate.
+    # Fine for testing; add DB_SSL_CA for production.
+    DB_CONFIG["ssl_verify_cert"] = False
+
 
 def get_connection():
     return mysql.connector.connect(**DB_CONFIG)
 
 
 def init_db():
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS goals (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            subject VARCHAR(255) NOT NULL,
-            hours INT NOT NULL,
-            done BOOLEAN NOT NULL DEFAULT FALSE
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS goals (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                subject VARCHAR(255) NOT NULL,
+                hours INT NOT NULL,
+                done BOOLEAN NOT NULL DEFAULT FALSE
+            )
+            """
         )
-        """
-    )
-    conn.commit()
-    cursor.close()
-    conn.close()
+        conn.commit()
+        cursor.close()
+        conn.close()
+        print("Database initialized successfully.")
+    except Error as e:
+        print(f"Database initialization failed: {e}")
+        raise
+
+
+@app.route("/", methods=["GET"])
+def health_check():
+    return jsonify({"status": "ok", "message": "Backend is running"}), 200
 
 
 @app.route("/goals", methods=["GET"])
@@ -124,4 +146,5 @@ def delete_goal(goal_id):
 
 if __name__ == "__main__":
     init_db()
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    port = int(os.getenv("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
